@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This Cloud Formation template deploy an ELB Load Balancer, with Target Group 
+
+Parameters:
+  pVPCId:
+    Description: VPC ID for Application load balancer
+    Type: String
+  pSubnets:
+    Description: Subnets for Application load balancer
+    Type: String
+  EC2StackName:
+    Description: A name for the EC2 stack
+    Type: String
+
+Resources:
+
+  rApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref 'AWS::StackName'
+      Scheme: "internet-facing"
+      SecurityGroups:
+        - !GetAtt LoadBalancerSecurityGroup.GroupId
+      Type: application
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: 1800
+      Subnets:
+        Fn::Split:
+          - ','
+          - Ref: pSubnets
+      
+  rALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 3
+      HealthCheckTimeoutSeconds: 15
+      UnhealthyThresholdCount: 3
+      TargetType: instance
+      Targets: 
+        - Id: 
+            Fn::ImportValue: !Sub "${EC2StackName}-InstanceID"
+      Port: 80
+      Protocol: HTTP
+      HealthCheckPath: /
+      Matcher: 
+        HttpCode: 200-399
+      VpcId:
+        !Ref pVPCId
+      Tags:
+      - Key: Name
+        Value:  !Join ["-", [!Ref 'AWS::StackName', "tg"]]
+
+
+  rALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref rApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref rALBTargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Enable HTTP access via port 80 locked down to the load balancer + SSH access"
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: 80
+        IpProtocol: tcp
+        ToPort: 80
+
+
+Outputs:
+    rALBTargetGroupArn:
+      Description: The ARN of ALB target group
+      Value:
+        Ref: rALBListener
+
+    rALBFullName:
+      Description: The full name of the load balancer.
+      Value:
+        Fn::GetAtt: [rApplicationLoadBalancer, LoadBalancerFullName]

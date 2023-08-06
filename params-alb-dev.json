@@ -1,0 +1,7 @@
+{
+    "Parameters" : {
+      "pVPCId" : "vpc-02861c69",
+      "pSubnets" : "subnet-f0ae2c9b,subnet-fd1be380",
+      "EC2StackName" : "AWSCommunityDemo-dev-ec2"
+    }
+}

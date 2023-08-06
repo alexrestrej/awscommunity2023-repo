@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Template para el despliegue de recursos RDS DB-WIW.
+
+Parameters: 
+  pEnvironment:
+    Description: Environment.
+    Type: String
+  pDBName:
+    Description: Database name.
+    Type: String
+  pAllocatedStorage:
+    Description: Database Storage in GB.
+    Type: String
+  pStorageType: 
+    Description: Database Storage in GB. 
+    Type: String
+    Default: gp3
+  pLicenseModel:
+    Description: License Model
+    Type: String
+    Default: general-public-license
+  pMaxAllocatedStorage:
+    Description: Max Allocated storage
+    Type: String
+  pDBEngine:
+    Description: Database engine to be used for this instance.
+    Type: String
+    Default: mariadb
+  pEngineVersion: 
+    Description: Version Engine RDS 
+    Type: String 
+    Default: "10.6.14"
+  pVPCId:
+    Description: VPC ID for Application load balancer
+    Type: String
+    Default: vpc-02861c69
+  EC2StackName:
+    Description: A name for the EC2 stack
+    Type: String    
+
+Mappings:
+  env:
+    dev:
+      SubnetDB : "dev-db-subnets"
+      port: 3306
+    prod:
+      SubnetDB : "prod-db-subnets"
+      port: 3306
+  
+
+Resources:
+  rDBSecurityGroups:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable DataBases access
+      GroupName: 
+        Fn::Join: ["-", [!Ref 'AWS::StackName', "sg"]]
+      VpcId:
+        !Ref pVPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          Description: "Access"
+          FromPort:
+            Fn::FindInMap:
+            - env
+            - Ref: pEnvironment
+            - port          
+          ToPort:
+            Fn::FindInMap:
+            - env
+            - Ref: pEnvironment
+            - port
+          SourceSecurityGroupId: 
+            Fn::ImportValue: !Sub "${EC2StackName}-SecurityGroupID"
+
+  rDataBases1:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      CopyTagsToSnapshot: true
+      DBInstanceIdentifier: 
+        Ref: pDBName
+      VPCSecurityGroups: 
+        - Ref: rDBSecurityGroups
+      AllocatedStorage: 
+        Ref: pAllocatedStorage
+      MaxAllocatedStorage:
+        Ref: pMaxAllocatedStorage
+      StorageType: 
+        Ref: pStorageType
+      DBInstanceClass: db.t3.xlarge
+      DBSubnetGroupName:
+        Fn::FindInMap:
+         - env
+         - Ref: pEnvironment
+         - SubnetDB
+      Engine:
+        Ref: pDBEngine       
+      EngineVersion: 
+        Ref: pEngineVersion
+      LicenseModel: 
+        Ref: pLicenseModel
+      MasterUsername: 
+        Fn::Join: ['', ['{{resolve:secretsmanager:', Ref: rSecretAdminRDS1, ':SecretString:username}}' ]]
+      MasterUserPassword: 
+        Fn::Join: ['', ['{{resolve:secretsmanager:', Ref: rSecretAdminRDS1, ':SecretString:password}}' ]]
+      StorageEncrypted: true
+      AutoMinorVersionUpgrade: true
+      AllowMajorVersionUpgrade: true
+      PubliclyAccessible: false
+      DeleteAutomatedBackups: true
+      BackupRetentionPeriod: 0
+
+  rSecretAdminRDS1:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name:
+        Fn::Sub: '${AWS::StackName}-secretrds-admin'
+      Description:
+        Fn::Sub: 'Secreto del usuario administrador de la base de datos.'
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "usrAdmin"}'
+        GenerateStringKey: "password"
+        PasswordLength: 15
+        ExcludeCharacters: '"@/\'
+
+  rSecretMonitRDSInstanceAttachment2:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: 
+        Ref: rSecretAdminRDS1
+      TargetId: 
+        Ref: rDataBases1
+      TargetType: AWS::RDS::DBInstance
+
+# Outputs:
+#   JDBCConnectionString:
+#     Description: JDBC connection string for the database
+#     Value: 
+#       Fn::Join:
+#       - ''
+#       - - 'jdbc:'
+#         - Ref: pDataBase
+#         - '://'
+#         - Fn::GetAtt:
+#           - rDataBases1
+#           - Endpoint.Address
+#         - ':'
+#         - Fn::GetAtt:
+#           - rDataBases1
+#           - Endpoint.Port
+#         - /
+#         - Ref: pDBName

@@ -1,0 +1,9 @@
+{
+    "Parameters" : {
+      "pEnvironment" : "prod",
+      "pDBName" : "awscommunitydemo-database",
+      "pAllocatedStorage" : "100",
+      "pMaxAllocatedStorage":"200",
+      "EC2StackName" : "AWSCommunityDemo-prod-ec2"    
+    }
+}

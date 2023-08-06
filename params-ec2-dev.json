@@ -1,0 +1,9 @@
+{
+  "Parameters" : {
+    "DBName" : "PressDB",
+    "DBPassword" : "Passw0rd",
+    "DBRootPassword" : "Passw0rd",
+    "DBUser" : "DBuser",    
+    "KeyName" : "EC2KeyName"
+  }
+}
