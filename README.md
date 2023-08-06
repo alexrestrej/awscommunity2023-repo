@@ -5,7 +5,7 @@ Talk name: Automatizando Infraestructura con DevOps
 
 # WebApp Architecture
 
-![WebApp demo](https://drive.google.com/file/d/1JPy7ckWi9onjBKB3wJq1LUn-nqy1xj5Q/view?usp=sharing)
+![WebApp demo](http://drive.google.com/uc?export=view&id=1JPy7ckWi9onjBKB3wJq1LUn-nqy1xj5Q)
 - Tiers: Web, Application and database.
 - Environmets: Development and production.
 - Serivces: Amazon Application Load Balancer, Amazon EC2, Amazon RDS, AWS CodeCommit and AWS CodePipeline.
